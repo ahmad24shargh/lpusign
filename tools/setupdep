@@ -41,20 +41,41 @@ function boringssl-gen-ninja() {
     fi
 
     if [ "$DO_NDK" = "yes" ]; then
-        ABIS=("arm64-v8a" "x86" "armeabi-v7a")
+        # Android arm64-v8a
+        if ! [ -d "build-android-arm64" ]; then
+            echo "Generating android arm64-v8a ninja file..."
 
-        for ABI in "${ABIS[@]}"; do
-            if ! [ -d "build-android-$ABI" ]; then
-                echo "Generating android ninja file for $ABI..."
+            cmake -DANDROID_ABI=arm64-v8a \
+                  -DANDROID_PLATFORM=android-21 \
+                  -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -GNinja -B build-android-arm64  
+        fi
 
-                cmake -DANDROID_ABI=$ABI \
-                      -DANDROID_PLATFORM=android-21 \
-                      -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
-                      -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
-                      -DCMAKE_BUILD_TYPE=Release \
-                      -GNinja -B build-android-$ABI  
-            fi
-        done
+        # Android armeabi-v7a
+        if ! [ -d "build-android-armeabi-v7a" ]; then
+            echo "Generating android armeabi-v7a ninja file..."
+
+            cmake -DANDROID_ABI=armeabi-v7a \
+                  -DANDROID_PLATFORM=android-16 \
+                  -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -GNinja -B build-android-armeabi-v7a  
+        fi
+
+        # Android x86
+        if ! [ -d "build-android-x86" ]; then
+            echo "Generating android x86 ninja file..."
+
+            cmake -DANDROID_ABI=x86 \
+                  -DANDROID_PLATFORM=android-16 \
+                  -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -GNinja -B build-android-x86  
+        fi
     fi
 }
 
@@ -64,19 +85,28 @@ function boringssl-call-ninja() {
     ninja -j10
 
     cd ..
-    
+
     if [ "$DO_NDK" = "yes" ]; then
-        ABIS=("arm64-v8a" "x86" "armeabi-v7a")
+        # Android arm64-v8a
+        cd build-android-arm64
 
-        for ABI in "${ABIS[@]}"; do
-            if [ -d "build-android-$ABI" ]; then
-                cd "build-android-$ABI"
+        ninja -j10
 
-                ninja -j10
+        cd ..
 
-                cd ..
-            fi
-        done
+        # Android armeabi-v7a
+        cd build-android-armeabi-v7a
+
+        ninja -j10
+
+        cd ..
+
+        # Android x86
+        cd build-android-x86
+
+        ninja -j10
+
+        cd ..
     fi
 }
 
@@ -96,12 +126,42 @@ function boringssl-select() {
         rm build
     fi
 
-    if ! [ -d "build-$1" ]; then
-        echo "You must build $1 first"
-        exit 1
-    fi
+    case "$1" in
+        host)
+            if ! [ -d "build-host" ]; then
+                echo "You must build host first"
+                exit 1
+            fi
+            ln -s build-host build
+        ;;
+        android-arm64)
+            if ! [ -d "build-android-arm64" ]; then
+                echo "You must build android-arm64 first"
+                exit 1
+            fi
+            ln -s build-android-arm64 build
+        ;;
+        android-armeabi-v7a)
+            if ! [ -d "build-android-armeabi-v7a" ]; then
+                echo "You must build android-armeabi-v7a first"
+                exit 1
+            fi
+            ln -s build-android-armeabi-v7a build
+        ;;
+        android-x86)
+            if ! [ -d "build-android-x86" ]; then
+                echo "You must build android-x86 first"
+                exit 1
+            fi
+            ln -s build-android-x86 build
+        ;;
+        *)
+            echo "Unknown target: $1"
+            exit 1
+        ;;
+    esac
 
-    ln -s build-$1 build
+    cd ..
 }
 
 function boringssl-clean() {
@@ -109,7 +169,9 @@ function boringssl-clean() {
 
     if [ "$1" = "deep" ]; then
         rm -rf build-host
-        rm -rf build-android*
+        rm -rf build-android-arm64
+        rm -rf build-android-armeabi-v7a
+        rm -rf build-android-x86
         rm -f build
 
         return 0
@@ -118,16 +180,22 @@ function boringssl-clean() {
     if [ -d "build-host" ]; then
         cd build-host
         ninja clean
-        cd ..
     fi
 
-    for ABI in "arm64-v8a" "x86" "armeabi-v7a"; do
-        if [ -d "build-android-$ABI" ]; then
-            cd "build-android-$ABI"
-            ninja clean
-            cd ..
-        fi
-    done
+    if [ -d "build-android-arm64" ]; then
+        cd build-android-arm64
+        ninja clean
+    fi
+
+    if [ -d "build-android-armeabi-v7a" ]; then
+        cd build-android-armeabi-v7a
+        ninja clean
+    fi
+
+    if [ -d "build-android-x86" ]; then
+        cd build-android-x86
+        ninja clean
+    fi
 
     if [ -d "build" ]; then
         rm build
@@ -136,22 +204,23 @@ function boringssl-clean() {
     cd ..
 }
 
-
 case "$1" in
     clean)
         boringssl-clean $2
     ;;
-
-    android)
-        boringssl-select "android-$2"
+    android-arm64)
+        boringssl-select "android-arm64"
     ;;
-
+    android-armeabi-v7a)
+        boringssl-select "android-armeabi-v7a"
+    ;;
+    android-x86)
+        boringssl-select "android-x86"
+    ;;
     host)
         boringssl-select "host"
     ;;
-
     *)
         boringssl-build
     ;;
-
 esac
