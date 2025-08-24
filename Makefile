@@ -14,7 +14,7 @@ CFLAGS := -I$(SRC_PATH) -fPIC -Wno-deprecated-declarations -Werror -c $(CFLAGS)
 LDFLAGS := -Wall $(LDFLAGS) -fuse-ld=lld
 
 # compile macros
-TARGET_NAME_DYNAMIC := zakosign
+TARGET_NAME_DYNAMIC := lpusign
 
 ifeq ($(DEBUG_MODE),1)
 	CFLAGS := -DBUILD_DEBUG=1 -O0 -g $(CFLAGS)

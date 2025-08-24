@@ -1,12 +1,12 @@
 
 #include "param.h"
 
-static inline bool zako_i8_inrange(char num, char min, char max) {
+static inline bool lpu_i8_inrange(char num, char min, char max) {
     return num >= min && num <= max;
 }
 
-struct zako_command* zako_new_command(struct zako_command* command, const char* cmd, zako_cmd_handler handler) {
-    struct zako_command* new_cmd = ZakoAllocateStruct(zako_command);
+struct lpu_command* lpu_new_command(struct lpu_command* command, const char* cmd, lpu_cmd_handler handler) {
+    struct lpu_command* new_cmd = LpuAllocateStruct(lpu_command);
     new_cmd->callback = handler;
     new_cmd->command = cmd;
 
@@ -14,7 +14,7 @@ struct zako_command* zako_new_command(struct zako_command* command, const char* 
         return new_cmd;
     }
 
-    struct zako_command* curr = command->sub_commands;
+    struct lpu_command* curr = command->sub_commands;
 
     if (curr != NULL) {
         while (curr->next != NULL) {
@@ -30,30 +30,30 @@ struct zako_command* zako_new_command(struct zako_command* command, const char* 
     return new_cmd;
 }
 
-static void zako_command_free(struct zako_command* root) {
-    struct zako_command* curr = root;
+static void lpu_command_free(struct lpu_command* root) {
+    struct lpu_command* curr = root;
 
     while (curr != NULL) {
-        struct zako_command* next = curr->next;
+        struct lpu_command* next = curr->next;
 
-        zako_command_free(curr->sub_commands);
+        lpu_command_free(curr->sub_commands);
 
         free(curr);
         curr = next;
     }
 }
 
-static void zako_param_free(struct zako_param* root) {
-    struct zako_param* curr = root;
+static void lpu_param_free(struct lpu_param* root) {
+    struct lpu_param* curr = root;
     
     while (curr != NULL) {
-        struct zako_param* next = curr->next;
+        struct lpu_param* next = curr->next;
         free(curr);
         curr = next;
     }
 }
 
-int call_handler(struct zako_command* command, struct zako_param* params, char* flags) {
+int call_handler(struct lpu_command* command, struct lpu_param* params, char* flags) {
     if (command == NULL) {
         return -1;
     }
@@ -62,30 +62,30 @@ int call_handler(struct zako_command* command, struct zako_param* params, char* 
         return -1;
     }
 
-    return command->callback(flags, (struct zako_param*) params);
+    return command->callback(flags, (struct lpu_param*) params);
 }
 
-int zako_execute(struct zako_command* root, int argc, char* argv[]) {
+int lpu_execute(struct lpu_command* root, int argc, char* argv[]) {
     if (--argc == 0) {
         int result = call_handler(root, NULL, NULL);
-        zako_command_free(root);
+        lpu_command_free(root);
 
         return result;
     }
 
-    struct zako_param* params_root = ZakoAllocateStruct(zako_param);
-    struct zako_param* params = params_root;
-    char* flags = (char*) zako_allocate_safe(48);
+    struct lpu_param* params_root = LpuAllocateStruct(lpu_param);
+    struct lpu_param* params = params_root;
+    char* flags = (char*) lpu_allocate_safe(48);
     uint32_t flag_count = 0;
     uint32_t uparam_count = 0;
 
-    struct zako_command* cmd = root;
+    struct lpu_command* cmd = root;
     bool found_subcommand = false;
 
     for (uint32_t i = 0; i < argc; i ++) {
-        if (zako_strstarts(argv[i], "-")) {
-            if (zako_strstarts(argv[i], "--")) {
-                params->next = ZakoAllocateStruct(zako_param);
+        if (lpu_strstarts(argv[i], "-")) {
+            if (lpu_strstarts(argv[i], "--")) {
+                params->next = LpuAllocateStruct(lpu_param);
                 params->index = -1;
                 params->name = &argv[i][2];
                 
@@ -104,9 +104,9 @@ int zako_execute(struct zako_command* root, int argc, char* argv[]) {
 
                 for (uint8_t j = 0; j < len; j ++) {
                     char fl = argv[i][1 + j];
-                    if (zako_i8_inrange(fl, 'A', 'Z')) {
+                    if (lpu_i8_inrange(fl, 'A', 'Z')) {
                         flags[fl - 65] = fl;
-                    } else if (zako_i8_inrange(fl, 'a', 'z')) {
+                    } else if (lpu_i8_inrange(fl, 'a', 'z')) {
                         flags[fl - 97 + 24] = fl;
                     } else {
                         continue;
@@ -119,7 +119,7 @@ int zako_execute(struct zako_command* root, int argc, char* argv[]) {
 
 collect_param:
         if (found_subcommand) {
-            params->next = ZakoAllocateStruct(zako_param);
+            params->next = LpuAllocateStruct(lpu_param);
             params->index = uparam_count ++;
             params->name = NULL;
             params->value = argv[i];
@@ -129,11 +129,11 @@ collect_param:
             goto next;
         }
 
-        struct zako_command* curr = cmd->sub_commands;
+        struct lpu_command* curr = cmd->sub_commands;
         found_subcommand = true;
 
         while (curr != NULL) {
-            if (zako_streq(curr->command, argv[i])) {
+            if (lpu_streq(curr->command, argv[i])) {
                 cmd = curr;
 
                 found_subcommand = false;
@@ -151,32 +151,32 @@ next:
     int result = call_handler(cmd, params_root, flags);
 
     /* Free allocated heap memories */
-    zako_command_free(root);
-    zako_param_free(params_root);
+    lpu_command_free(root);
+    lpu_param_free(params_root);
     free(flags);
 
     return result;
 }
 
-bool zako_flag(char* flags, char fl) {
+bool lpu_flag(char* flags, char fl) {
     if (flags == NULL) {
         return false;
     }
 
-    if (zako_i8_inrange(fl, 'A', 'Z')) {
+    if (lpu_i8_inrange(fl, 'A', 'Z')) {
         return flags[fl - 65] != 0;
-    } else if (zako_i8_inrange(fl, 'a', 'z')) {
+    } else if (lpu_i8_inrange(fl, 'a', 'z')) {
         return flags[fl - 97 + 24] != 0;
     }
 
     return false;
 }
 
-bool zako_flag_param(struct zako_param* params, char* flag) {
-    struct zako_param* curr = params;
+bool lpu_flag_param(struct lpu_param* params, char* flag) {
+    struct lpu_param* curr = params;
 
     while(curr != NULL) {
-        if (zako_streq(params->name, flag)) {
+        if (lpu_streq(params->name, flag)) {
             return true;
         }
 
@@ -186,8 +186,8 @@ bool zako_flag_param(struct zako_param* params, char* flag) {
     return false;
 }
 
-char* zako_param_at(struct zako_param* params, int32_t index) {
-    struct zako_param* curr = params;
+char* lpu_param_at(struct lpu_param* params, int32_t index) {
+    struct lpu_param* curr = params;
 
     while(curr != NULL) {
         if (curr->index == index && curr->value != NULL) {
@@ -201,11 +201,11 @@ char* zako_param_at(struct zako_param* params, int32_t index) {
 }
 
 
-char* zako_param_named(struct zako_param* params, const char* name) {
-    struct zako_param* curr = params;
+char* lpu_param_named(struct lpu_param* params, const char* name) {
+    struct lpu_param* curr = params;
 
     while(curr != NULL) {
-        if (zako_streq(curr->name, name)) {
+        if (lpu_streq(curr->name, name)) {
             return curr->value;
         }
 
@@ -215,12 +215,12 @@ char* zako_param_named(struct zako_param* params, const char* name) {
     return NULL;
 }
 
-uint32_t zako_params_count(struct zako_param* params) {
+uint32_t lpu_params_count(struct lpu_param* params) {
     if (params == NULL) {
         return 0;
     }
 
-    struct zako_param* curr = params;
+    struct lpu_param* curr = params;
     uint32_t count = 0;
 
     while(curr != NULL) {

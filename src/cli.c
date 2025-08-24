@@ -16,44 +16,44 @@
 
 #define SERIAL_RAND_BITS 159
 
-ZakoCommandHandler(root) {
-    if (ZakoFlagParam("version") || ZakoFlag('v')) {
-        ConsoleWrite("libzakosign: %s-%s (%i)", ZAKO_LIBRARY_VERSION_STRING, ZAKO_LIBRARY_VERSION_TYPE, ZAKO_ESIGNATURE_VERSION);
+LpuCommandHandler(root) {
+    if (LpuFlagParam("version") || LpuFlag('v')) {
+        ConsoleWrite("liblpusign: %s-%s (%i)", LPU_LIBRARY_VERSION_STRING, LPU_LIBRARY_VERSION_TYPE, LPU_ESIGNATURE_VERSION);
         ConsoleWrite("openssl: %s", OPENSSL_VERSION_TEXT);
     } else {
-        ConsoleWrite("zakosign - A ELF signing tool");
-        ConsoleWrite("For help, please use 'zakosign help'")
+        ConsoleWrite("lpusign - A ELF signing tool");
+        ConsoleWrite("For help, please use 'lpusign help'")
     }
 
     return 0;
 }
 
-ZakoCommandHandler(root_help) {
-    ConsoleWrite("%s", ZakoConstant(help));
+LpuCommandHandler(root_help) {
+    ConsoleWrite("%s", LpuConstant(help));
     return 0;
 }
 
-ZakoCommandHandler(root_verify) {
-    char* input = ZakoParamAt(0);
-    bool strict_mode = ZakoFlagParam("strict");
-    bool integrity_only = ZakoFlagParam("integrity");
+LpuCommandHandler(root_verify) {
+    char* input = LpuParamAt(0);
+    bool strict_mode = LpuFlagParam("strict");
+    bool integrity_only = LpuFlagParam("integrity");
 
     if (input == NULL) {
-        ConsoleWrite("Usage: zakosign verify [options...] <input.elf>")
+        ConsoleWrite("Usage: lpusign verify [options...] <input.elf>")
     }
 
-    if (!zako_sys_file_exist(input)) {
+    if (!lpu_sys_file_exist(input)) {
         ConsoleWriteFAIL("%s does not exist!", input);
         return 1;
     }
 
-    file_handle_t fd = zako_sys_file_open(input);
-    uint32_t results = zako_file_verify_esig(fd, 
-                            (strict_mode ? ZAKO_ESV_STRICT_MODE : 0) + 
-                            (integrity_only ? ZAKO_ESV_INTEGRITY_ONLY : 0));
+    file_handle_t fd = lpu_sys_file_open(input);
+    uint32_t results = lpu_file_verify_esig(fd, 
+                            (strict_mode ? LPU_ESV_STRICT_MODE : 0) + 
+                            (integrity_only ? LPU_ESV_INTEGRITY_ONLY : 0));
 
     if (results != 0) {
-        OnFlag(results, ZAKO_ESV_IMPORTANT_ERROR) {
+        OnFlag(results, LPU_ESV_IMPORTANT_ERROR) {
             ConsoleWriteFAIL("Verification failed! (%u)", results);
         } else {
             ConsoleWriteFAIL("Verification partially passed. (%u)", results);
@@ -68,75 +68,75 @@ ZakoCommandHandler(root_verify) {
             continue;
         }
 
-        const char* message = zako_file_verrcidx2str(i);
+        const char* message = lpu_file_verrcidx2str(i);
         ConsoleWriteFAIL("  %s", message);
     }
 
 exit:
-    zako_sys_file_close(fd);
+    lpu_sys_file_close(fd);
 
     exit(results);
     return results;
 }
 
-ZakoCommandHandler(root_sign) {
-    char* input = ZakoParamAt(0);
-    char* key = ZakoParam("key");
-    char* password = ZakoParam("password");
-    char* output = ZakoParam("output");
-    char* pubkey_path = ZakoParam("pubkey");
-    bool overwrite = ZakoFlagParam("force") || ZakoFlag('f');
+LpuCommandHandler(root_sign) {
+    char* input = LpuParamAt(0);
+    char* key = LpuParam("key");
+    char* password = LpuParam("password");
+    char* output = LpuParam("output");
+    char* pubkey_path = LpuParam("pubkey");
+    bool overwrite = LpuFlagParam("force") || LpuFlag('f');
 
     if (input == NULL) {
-        ConsoleWrite("Usage: zakosign sign [options...] --key <private.key> <input.elf>");
+        ConsoleWrite("Usage: lpusign sign [options...] --key <private.key> <input.elf>");
         return 1;
     }
 
     if (key == NULL) {
-        ConsoleWrite("Usage: zakosign sign [options...] --key <private.key> <input.elf>");
+        ConsoleWrite("Usage: lpusign sign [options...] --key <private.key> <input.elf>");
         return 1;
     }
 
-    if (!zako_sys_file_exist(input)) {
+    if (!lpu_sys_file_exist(input)) {
         ConsoleWriteFAIL("%s does not exist!", input);
         return 1;
     }
 
-    if (!zako_sys_file_exist(key)) {
+    if (!lpu_sys_file_exist(key)) {
         ConsoleWriteFAIL("%s does not exist!", key);
         return 1;
     }
 
-    struct zako_esign_context* es_ctx = zako_esign_new();
+    struct lpu_esign_context* es_ctx = lpu_esign_new();
 
     /* Gather certificate info */
-    struct zako_trustchain* chain = zako_trustchain_new();
+    struct lpu_trustchain* chain = lpu_trustchain_new();
 
     {
-        struct zako_param* pr_curr = params;
+        struct lpu_param* pr_curr = params;
         bool leaf_set = false;
         while (pr_curr != NULL) {
-            if (zako_streq(pr_curr->name, "certificate")) {
+            if (lpu_streq(pr_curr->name, "certificate")) {
                 if (!leaf_set) {
-                    X509* cert = zako_x509_load_pem(pr_curr->value);
+                    X509* cert = lpu_x509_load_pem(pr_curr->value);
 
                     if (cert == NULL) {
                         exit(1);
                     }
 
-                    zako_esign_add_keycert(es_ctx, zako_esign_add_certificate(es_ctx, cert));
-                    zako_trustchain_set_leaf(chain, cert);
+                    lpu_esign_add_keycert(es_ctx, lpu_esign_add_certificate(es_ctx, cert));
+                    lpu_trustchain_set_leaf(chain, cert);
 
                     leaf_set = true;
                 } else {
-                    X509* cert = zako_x509_load_pem(pr_curr->value);
+                    X509* cert = lpu_x509_load_pem(pr_curr->value);
 
                     if (cert == NULL) {
                         exit(1);
                     }
 
-                    zako_esign_add_keycert(es_ctx, zako_esign_add_certificate(es_ctx, cert));
-                    zako_trustchain_add_intermediate(chain, cert);
+                    lpu_esign_add_keycert(es_ctx, lpu_esign_add_certificate(es_ctx, cert));
+                    lpu_trustchain_add_intermediate(chain, cert);
                 }
             }
 
@@ -145,11 +145,11 @@ ZakoCommandHandler(root_sign) {
     }
 
     /* Gather key info */
-    EVP_PKEY* pkey = zako_load_private(key, password);
+    EVP_PKEY* pkey = lpu_load_private(key, password);
     EVP_PKEY* pubkey;
 
     if (pubkey_path != NULL) {
-        pubkey = zako_load_public(pubkey_path);
+        pubkey = lpu_load_public(pubkey_path);
 
         if (pubkey == NULL) {
             pubkey = pkey;
@@ -161,7 +161,7 @@ ZakoCommandHandler(root_sign) {
     /* Verify public key is valid */
     if (chain->leaf != NULL) { /* Only verify when we have a certificate */
         /* Do full certificate chain verify*/
-        int verification = zako_trustchain_verifykey(chain, pubkey);
+        int verification = lpu_trustchain_verifykey(chain, pubkey);
         if (verification != 0) {
             ConsoleWriteFAIL("Certificate Error! Invalid certificate: ")
 
@@ -173,15 +173,15 @@ ZakoCommandHandler(root_sign) {
         }
     }
 
-    zako_esign_set_publickey(es_ctx, pubkey);
+    lpu_esign_set_publickey(es_ctx, pubkey);
 
     /* Load input / output ELF file */
     file_handle_t target;
 
     if (output == NULL) {
-        target = zako_sys_file_open(input);
+        target = lpu_sys_file_open(input);
     } else {
-        target = zako_sys_file_opencopy(input, output, overwrite);
+        target = lpu_sys_file_opencopy(input, output, overwrite);
     }
 
     if (target == -1) {
@@ -190,31 +190,31 @@ ZakoCommandHandler(root_sign) {
     
     ConsoleWriteOK("Signing...")
 
-    uint8_t result[ZAKO_SIGNATURE_LENGTH] = { 0 };
-    uint8_t hash[ZAKO_HASH_LENGTH] = { 0 };
+    uint8_t result[LPU_SIGNATURE_LENGTH] = { 0 };
+    uint8_t hash[LPU_HASH_LENGTH] = { 0 };
     /* Signature is a known size, so we can safely ignore this */
 #pragma clang diagnostic ignored "-Wincompatible-pointer-types"
-    if (!zako_file_sign(target, pkey, &result, &hash)) {
+    if (!lpu_file_sign(target, pkey, &result, &hash)) {
         ConsoleWriteFAIL("Failed to sign input file")
         return 1;
     }
-    size_t target_sz = zako_sys_file_sz(target);
+    size_t target_sz = lpu_sys_file_sz(target);
 
-    ConsoleWriteOK("File Signature created: %s (%lu bytes digested)", base64_encode(result, ZAKO_SIGNATURE_LENGTH, NULL), target_sz);
+    ConsoleWriteOK("File Signature created: %s (%lu bytes digested)", base64_encode(result, LPU_SIGNATURE_LENGTH, NULL), target_sz);
     
-    zako_esign_set_signature(es_ctx, hash, result);
+    lpu_esign_set_signature(es_ctx, hash, result);
     
     size_t len = 0;
-    struct zako_esignature* esig = zako_esign_create(es_ctx, &len);
+    struct lpu_esignature* esig = lpu_esign_create(es_ctx, &len);
 
     ConsoleWriteOK("Writing E-Signature info (%lu bytes)...", len);
-    if (!zako_file_write_esig(target, esig, len)) {
+    if (!lpu_file_write_esig(target, esig, len)) {
         exit(1);
     }
 
-    zako_sys_file_close(target);
+    lpu_sys_file_close(target);
     free(esig);
-    zako_trustchain_free(chain);
+    lpu_trustchain_free(chain);
     EVP_PKEY_free(pkey);
 
     ConsoleWriteOK("Done")
@@ -222,14 +222,14 @@ ZakoCommandHandler(root_sign) {
     return 0;
 }
 
-ZakoCommandHandler(root_key) {
-    ConsoleWrite("Usage: zakosign key <option> [args...]")
+LpuCommandHandler(root_key) {
+    ConsoleWrite("Usage: lpusign key <option> [args...]")
 
     return 0;
 }
 
-static void zako_cli_write_certificate_info(struct zako_der_certificate* der) {
-    X509* x509 = zako_x509_parse_der(der->data, der->len);
+static void lpu_cli_write_certificate_info(struct lpu_der_certificate* der) {
+    X509* x509 = lpu_x509_parse_der(der->data, der->len);
 
     if (x509 == NULL) {
         return;
@@ -286,20 +286,20 @@ static void zako_cli_write_certificate_info(struct zako_der_certificate* der) {
     }
 }
 
-ZakoCommandHandler(root_info) {
-    char* input = ZakoParamAt(0);
+LpuCommandHandler(root_info) {
+    char* input = LpuParamAt(0);
 
     if (input == NULL) {
-        ConsoleWrite("Usage: zakosign info <file>")
+        ConsoleWrite("Usage: lpusign info <file>")
     }
 
-    if (!zako_sys_file_exist(input)) {
+    if (!lpu_sys_file_exist(input)) {
         ConsoleWriteFAIL("%s does not exist!", input);
         return 1;
     }
 
-    file_handle_t fd = zako_sys_file_open(input);
-    struct zako_esignature* esig = zako_file_read_esig(fd);
+    file_handle_t fd = lpu_sys_file_open(input);
+    struct lpu_esignature* esig = lpu_file_read_esig(fd);
 
     if (esig == NULL) {
         ConsoleWriteFAIL("File does not contains a valid E-Signature.");
@@ -307,28 +307,28 @@ ZakoCommandHandler(root_info) {
     }
 
     ConsoleWriteOK("E-Signature V%lu (%u Certificates, %u Extra fields)", esig->version, esig->cert_sz, esig->extra_fields_sz);
-    ConsoleWriteOK("  Checksum: %s", base64_encode(esig->hash, ZAKO_HASH_LENGTH, NULL));
-    ConsoleWriteOK("  Signed by: %s", base64_encode(esig->key.public_key, ZAKO_PUBKEY_LENGTH, NULL));
+    ConsoleWriteOK("  Checksum: %s", base64_encode(esig->hash, LPU_HASH_LENGTH, NULL));
+    ConsoleWriteOK("  Signed by: %s", base64_encode(esig->key.public_key, LPU_PUBKEY_LENGTH, NULL));
 
     if (esig->key.trustchain[0] == 255) {
         goto no_cert;
     }
 
     uint8_t cert_count = esig->cert_sz;
-    struct zako_der_certificate* cstbl[200] = { 0 };
+    struct lpu_der_certificate* cstbl[200] = { 0 };
 
     uint8_t* data = &esig->data;
     size_t off = (size_t) 0;
     for (uint8_t i = 0; i < cert_count; i ++) {
-        struct zako_der_certificate* cert = ApplyOffset(data, +off);
+        struct lpu_der_certificate* cert = ApplyOffset(data, +off);
         cstbl[i] = cert;
 
-        off += sizeof(struct zako_der_certificate) + cert->len;
+        off += sizeof(struct lpu_der_certificate) + cert->len;
     }
 
     ConsoleWriteOK("  Certificates: ");
     ConsoleWriteOK("    Leaf:");
-    zako_cli_write_certificate_info(cstbl[esig->key.trustchain[0]]);
+    lpu_cli_write_certificate_info(cstbl[esig->key.trustchain[0]]);
 
     if (esig->key.trustchain[1] == 255) {
         goto no_cert;
@@ -336,16 +336,16 @@ ZakoCommandHandler(root_info) {
 
     if (esig->key.trustchain[2] == 255) {
         ConsoleWriteOK("    L2:");
-        zako_cli_write_certificate_info(cstbl[esig->key.trustchain[1]]);
+        lpu_cli_write_certificate_info(cstbl[esig->key.trustchain[1]]);
 
         goto no_cert;
     } else {
         ConsoleWriteOK("    L3:");
-        zako_cli_write_certificate_info(cstbl[esig->key.trustchain[1]]);
+        lpu_cli_write_certificate_info(cstbl[esig->key.trustchain[1]]);
     }
 
     ConsoleWriteOK("    L2:");
-    zako_cli_write_certificate_info(cstbl[esig->key.trustchain[2]]);
+    lpu_cli_write_certificate_info(cstbl[esig->key.trustchain[2]]);
 
 no_cert:;
     
@@ -358,17 +358,17 @@ no_cert:;
         ConsoleWriteOK("  Signed At: <Unknown>");
     }
 
-    ConsoleWriteOK("  Signature: %s", base64_encode(esig->signature, ZAKO_SIGNATURE_LENGTH, NULL));
+    ConsoleWriteOK("  Signature: %s", base64_encode(esig->signature, LPU_SIGNATURE_LENGTH, NULL));
 
-    zako_sys_file_close(fd);
+    lpu_sys_file_close(fd);
     return 0;    
 }
 
-ZakoCommandHandler(root_key_new) {
-    char* foutput = ZakoParamAt(0);
+LpuCommandHandler(root_key_new) {
+    char* foutput = LpuParamAt(0);
 
     if (foutput == NULL) {
-        ConsoleWrite("Usage: zakosign key new <file>");
+        ConsoleWrite("Usage: lpusign key new <file>");
 
         return 1;
     }
@@ -377,14 +377,14 @@ ZakoCommandHandler(root_key_new) {
     EVP_PKEY *pkey = NULL;
 
     if (EVP_PKEY_keygen_init(ctx) <= 0) {
-        ZakoOSSLPrintError("Failed to generate signing key!");
+        LpuOSSLPrintError("Failed to generate signing key!");
 
         EVP_PKEY_CTX_free(ctx);
         return 1;
     }
 
     if (EVP_PKEY_keygen(ctx, &pkey) <= 0) {
-        ZakoOSSLPrintError("Failed to generate signing key!");
+        LpuOSSLPrintError("Failed to generate signing key!");
 
         EVP_PKEY_CTX_free(ctx);
         return 1;
@@ -393,11 +393,11 @@ ZakoCommandHandler(root_key_new) {
     BIO* out = BIO_new_file(foutput, "w+");
 
     if (out == NULL) {
-        ZakoOSSLPrintError("Failed to create and open output file: %s", foutput);
+        LpuOSSLPrintError("Failed to create and open output file: %s", foutput);
     }
 
     if (PEM_write_bio_PrivateKey(out, pkey, NULL, NULL, 0, NULL, NULL) <= 0) {
-        ZakoOSSLPrintError("Failed to write signing private key!");
+        LpuOSSLPrintError("Failed to write signing private key!");
     }
     
     BIO_flush(out);
@@ -405,7 +405,7 @@ ZakoCommandHandler(root_key_new) {
 
     BIO* pubout = BIO_new(BIO_s_mem());
     if (PEM_write_bio_PUBKEY(pubout, pkey) <= 0) {
-        ZakoOSSLPrintError("Failed to write signing public key!");
+        LpuOSSLPrintError("Failed to write signing public key!");
     }
     
     BUF_MEM* buffer;
@@ -420,26 +420,26 @@ ZakoCommandHandler(root_key_new) {
     return 0;
 }
 
-ZakoCommandHandler(root_key_pub) {
-    char* input = ZakoParamAt(0);
-    char* password = ZakoParam("--password");
+LpuCommandHandler(root_key_pub) {
+    char* input = LpuParamAt(0);
+    char* password = LpuParam("--password");
 
     if (input == NULL) {
-        ConsoleWrite("Usage: zakosign key pub <private.pem>");
+        ConsoleWrite("Usage: lpusign key pub <private.pem>");
 
         return 1;
     }
 
-    if (!zako_sys_file_exist(input)) {
+    if (!lpu_sys_file_exist(input)) {
         ConsoleWriteFAIL("%s does not exist!", input);
         return 1;
     }
 
-    EVP_PKEY* private = zako_load_private(input, password);
+    EVP_PKEY* private = lpu_load_private(input, password);
 
     BIO* pubout = BIO_new(BIO_s_mem());
     if (PEM_write_bio_PUBKEY(pubout, private) <= 0) {
-        ZakoOSSLPrintError("Failed to write signing public key!");
+        LpuOSSLPrintError("Failed to write signing public key!");
     }
     
     BUF_MEM* buffer;
@@ -452,13 +452,13 @@ ZakoCommandHandler(root_key_pub) {
     return 0;
 }
 
-ZakoCommandHandler(root_cert) {
-    ConsoleWrite("Usage: zakosign cert <option> [args...]")
+LpuCommandHandler(root_cert) {
+    ConsoleWrite("Usage: lpusign cert <option> [args...]")
 
     return 0;
 }
 
-static char* zako_cli_prompt(const char* prompt) {
+static char* lpu_cli_prompt(const char* prompt) {
     printf("%s", prompt);
 
     char* line = NULL;
@@ -488,15 +488,15 @@ static char* zako_cli_prompt(const char* prompt) {
     return NULL;
 }
 
-static inline char* zako_cli_noprmt(char* param, const char* prompt) {
+static inline char* lpu_cli_noprmt(char* param, const char* prompt) {
     if (param == NULL) {
-        return zako_cli_prompt(prompt);
+        return lpu_cli_prompt(prompt);
     }
 
     return param;
 }
 
-static bool zako_set_rand_serial(ASN1_INTEGER *ai) {
+static bool lpu_set_rand_serial(ASN1_INTEGER *ai) {
     BIGNUM *btmp = BN_new();
 
     if (!BN_rand(btmp, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
@@ -513,7 +513,7 @@ static bool zako_set_rand_serial(ASN1_INTEGER *ai) {
     return true;
 }
 
-static void zako_cert_add_extinfo(X509* x509, int32_t nid, const char* value) {
+static void lpu_cert_add_extinfo(X509* x509, int32_t nid, const char* value) {
     X509V3_CTX ctx;
     X509V3_set_ctx_nodb(&ctx);
     X509V3_set_ctx(&ctx, x509, x509, NULL, NULL, 0);
@@ -524,11 +524,11 @@ static void zako_cert_add_extinfo(X509* x509, int32_t nid, const char* value) {
     }
 }
 
-static inline X509_EXTENSION* zako_req_make_extinfo(X509_REQ* req, int32_t nid, const char* value) {
+static inline X509_EXTENSION* lpu_req_make_extinfo(X509_REQ* req, int32_t nid, const char* value) {
     return X509V3_EXT_nconf_nid(NULL, NULL, nid, value);
 }
 
-static uint64_t zako_s2i(char* str) {
+static uint64_t lpu_s2i(char* str) {
     char* end = NULL;
     long result = strtol(str, &end, 10);
     
@@ -539,39 +539,39 @@ static uint64_t zako_s2i(char* str) {
     return result;
 }
 
-ZakoCommandHandler(root_cert_new) {
-    char* private_key_path = ZakoParamAt(0);
-    char* out_path = ZakoParamAt(1);
+LpuCommandHandler(root_cert_new) {
+    char* private_key_path = LpuParamAt(0);
+    char* out_path = LpuParamAt(1);
 
-    char* password = ZakoParam("password");
-    char* ca = ZakoParam("ca");
+    char* password = LpuParam("password");
+    char* ca = LpuParam("ca");
 
-    char* country = zako_cli_noprmt(ZakoParam("country"), "Country (C): ");
-    char* state = zako_cli_noprmt(ZakoParam("state"), "State/Province (ST): ");
-    char* city = zako_cli_noprmt(ZakoParam("city"), "Location/City (L): ");
-    char* org = zako_cli_noprmt(ZakoParam("org"), "Orgnization (O): ");
-    char* ounit = zako_cli_noprmt(ZakoParam("ounit"), "Orgnization Unit (OU): ");
-    char* cname = zako_cli_noprmt(ZakoParam("cn"), "Common Name (CN): ");
-    char* valid_days = zako_cli_noprmt(ZakoParam("days"), "Valid Days: ");
+    char* country = lpu_cli_noprmt(LpuParam("country"), "Country (C): ");
+    char* state = lpu_cli_noprmt(LpuParam("state"), "State/Province (ST): ");
+    char* city = lpu_cli_noprmt(LpuParam("city"), "Location/City (L): ");
+    char* org = lpu_cli_noprmt(LpuParam("org"), "Orgnization (O): ");
+    char* ounit = lpu_cli_noprmt(LpuParam("ounit"), "Orgnization Unit (OU): ");
+    char* cname = lpu_cli_noprmt(LpuParam("cn"), "Common Name (CN): ");
+    char* valid_days = lpu_cli_noprmt(LpuParam("days"), "Valid Days: ");
 
 
     if (private_key_path == NULL || out_path == NULL) {
-        ConsoleWrite("Usage: zakosign cert new <private-key> <certificate.crt> ");
+        ConsoleWrite("Usage: lpusign cert new <private-key> <certificate.crt> ");
 
         return 1;
     }
 
-    if (!zako_sys_file_exist(private_key_path)) {
+    if (!lpu_sys_file_exist(private_key_path)) {
         ConsoleWriteFAIL("%s does not exist!", private_key_path);
         return 1;
     }
 
-    EVP_PKEY* private = zako_load_private(private_key_path, password);
+    EVP_PKEY* private = lpu_load_private(private_key_path, password);
 
     X509* x509 = X509_new();
 
     X509_set_version(x509, X509_VERSION_3);
-    zako_set_rand_serial(X509_get_serialNumber(x509));
+    lpu_set_rand_serial(X509_get_serialNumber(x509));
     X509_set_pubkey(x509, private);
 
     X509_NAME* name = X509_get_subject_name(x509);
@@ -586,25 +586,25 @@ ZakoCommandHandler(root_cert_new) {
     X509_set_issuer_name(x509, name);
 
     X509_gmtime_adj(X509_getm_notBefore(x509), 0);
-    X509_gmtime_adj(X509_getm_notAfter(x509), zako_s2i(valid_days) * SECONDS_ONE_DAY);
+    X509_gmtime_adj(X509_getm_notAfter(x509), lpu_s2i(valid_days) * SECONDS_ONE_DAY);
 
     if (ca != NULL) {
-        if (zako_streq("true", ca)) {
-            zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
-            zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
+        if (lpu_streq("true", ca)) {
+            lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
+            lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
         } else {
-            zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:FALSE");
-            zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment");
+            lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:FALSE");
+            lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment");
         }
     } else {
-        zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
-        zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
+        lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
+        lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
     }
 
-    zako_cert_add_extinfo(x509, NID_ext_key_usage, "critical, codeSigning");
+    lpu_cert_add_extinfo(x509, NID_ext_key_usage, "critical, codeSigning");
 
     if (X509_sign(x509, private, NULL) == 0) {
-        ZakoOSSLPrintError("Failed to sign generated certificate!");
+        LpuOSSLPrintError("Failed to sign generated certificate!");
         return 1;
     }
 
@@ -622,33 +622,33 @@ ZakoCommandHandler(root_cert_new) {
     return 0;
 }
 
-ZakoCommandHandler(root_cert_request) {
-    char* private_key_path = ZakoParamAt(0);
-    char* out_path = ZakoParamAt(1);
+LpuCommandHandler(root_cert_request) {
+    char* private_key_path = LpuParamAt(0);
+    char* out_path = LpuParamAt(1);
 
-    char* password = ZakoParam("password");
-    char* ca = ZakoParam("ca");
+    char* password = LpuParam("password");
+    char* ca = LpuParam("ca");
 
-    char* country = zako_cli_noprmt(ZakoParam("country"), "Country (C): ");
-    char* state = zako_cli_noprmt(ZakoParam("state"), "State/Province (ST): ");
-    char* city = zako_cli_noprmt(ZakoParam("city"), "Location/City (L): ");
-    char* org = zako_cli_noprmt(ZakoParam("org"), "Orgnization (O): ");
-    char* ounit = zako_cli_noprmt(ZakoParam("ounit"), "Orgnization Unit (OU): ");
-    char* cname = zako_cli_noprmt(ZakoParam("cn"), "Common Name (CN): ");
-    char* cpwd = zako_cli_noprmt(ZakoParam("cpwd"), "Challenge Password: ");
-    char* email = zako_cli_noprmt(ZakoParam("email"), "Requestor Email: ");
+    char* country = lpu_cli_noprmt(LpuParam("country"), "Country (C): ");
+    char* state = lpu_cli_noprmt(LpuParam("state"), "State/Province (ST): ");
+    char* city = lpu_cli_noprmt(LpuParam("city"), "Location/City (L): ");
+    char* org = lpu_cli_noprmt(LpuParam("org"), "Orgnization (O): ");
+    char* ounit = lpu_cli_noprmt(LpuParam("ounit"), "Orgnization Unit (OU): ");
+    char* cname = lpu_cli_noprmt(LpuParam("cn"), "Common Name (CN): ");
+    char* cpwd = lpu_cli_noprmt(LpuParam("cpwd"), "Challenge Password: ");
+    char* email = lpu_cli_noprmt(LpuParam("email"), "Requestor Email: ");
 
     if (private_key_path == NULL || out_path == NULL) {
-        ConsoleWrite("Usage: zakosign cert request <private-key> <request> ");
+        ConsoleWrite("Usage: lpusign cert request <private-key> <request> ");
         return 1;
     }
 
-    if (!zako_sys_file_exist(private_key_path)) {
+    if (!lpu_sys_file_exist(private_key_path)) {
         ConsoleWriteFAIL("%s does not exist!", private_key_path);
         return 1;
     }
 
-    EVP_PKEY* private = zako_load_private(private_key_path, password);
+    EVP_PKEY* private = lpu_load_private(private_key_path, password);
 
     X509_REQ* req = X509_REQ_new();
 
@@ -665,15 +665,15 @@ ZakoCommandHandler(root_cert_request) {
 
     STACK_OF(X509_EXTENSION*) request_exts = sk_X509_EXTENSION_new_null();
     if (ca != NULL) {
-        if (zako_streq("true", ca)) {
-            sk_X509_EXTENSION_push(request_exts, zako_req_make_extinfo(req, NID_basic_constraints, "critical, CA:TRUE"));
+        if (lpu_streq("true", ca)) {
+            sk_X509_EXTENSION_push(request_exts, lpu_req_make_extinfo(req, NID_basic_constraints, "critical, CA:TRUE"));
         } else {
-            sk_X509_EXTENSION_push(request_exts, zako_req_make_extinfo(req, NID_basic_constraints, "critical, CA:FALSE"));
+            sk_X509_EXTENSION_push(request_exts, lpu_req_make_extinfo(req, NID_basic_constraints, "critical, CA:FALSE"));
         }
     } else {
-        sk_X509_EXTENSION_push(request_exts, zako_req_make_extinfo(req, NID_basic_constraints, "critical, CA:TRUE"));
+        sk_X509_EXTENSION_push(request_exts, lpu_req_make_extinfo(req, NID_basic_constraints, "critical, CA:TRUE"));
     }
-    sk_X509_EXTENSION_push(request_exts, zako_req_make_extinfo(req, NID_ext_key_usage, "critical, codeSigning"));
+    sk_X509_EXTENSION_push(request_exts, lpu_req_make_extinfo(req, NID_ext_key_usage, "critical, codeSigning"));
 
     X509_REQ_add_extensions(req, request_exts);
 
@@ -686,7 +686,7 @@ ZakoCommandHandler(root_cert_request) {
     }
 
     if (X509_REQ_sign(req, private, NULL) == 0) {
-        ZakoOSSLPrintError("Failed to sign generated certificate request!");
+        LpuOSSLPrintError("Failed to sign generated certificate request!");
         return 1;
     }
 
@@ -706,7 +706,7 @@ ZakoCommandHandler(root_cert_request) {
     return 0;
 }
 
-static void zako_print_asn1_type(ASN1_TYPE* type) {
+static void lpu_print_asn1_type(ASN1_TYPE* type) {
     if (type->type == V_ASN1_BOOLEAN) {
         if (type->value.boolean) {
             printf("true");
@@ -729,7 +729,7 @@ static void zako_print_asn1_type(ASN1_TYPE* type) {
         for (size_t i = 0; i < seq_sz; i ++) {
             ASN1_TYPE* t = sk_ASN1_TYPE_value(seq, i);
 
-            zako_print_asn1_type(t);
+            lpu_print_asn1_type(t);
 
             if (i + 1 < seq_sz) {
                 printf(", ");
@@ -749,32 +749,32 @@ static void zako_print_asn1_type(ASN1_TYPE* type) {
     }
 }
 
-ZakoCommandHandler(root_cert_approve) {
-    char* private_key_path = ZakoParamAt(0);
-    char* ca_path = ZakoParamAt(1);
-    char* request_path = ZakoParamAt(2);
-    char* out_path = ZakoParamAt(3);
+LpuCommandHandler(root_cert_approve) {
+    char* private_key_path = LpuParamAt(0);
+    char* ca_path = LpuParamAt(1);
+    char* request_path = LpuParamAt(2);
+    char* out_path = LpuParamAt(3);
 
-    char* password = ZakoParam("password");
+    char* password = LpuParam("password");
 
-    EVP_PKEY* private = zako_load_private(private_key_path, password);
+    EVP_PKEY* private = lpu_load_private(private_key_path, password);
 
     if (private_key_path == NULL || ca_path == NULL || request_path == NULL || out_path == NULL) {
-        ConsoleWrite("Usage: zakosign cert approve <private-key> <request> <out.crt>");
+        ConsoleWrite("Usage: lpusign cert approve <private-key> <request> <out.crt>");
         return 1;
     }
 
-    if (!zako_sys_file_exist(private_key_path)) {
+    if (!lpu_sys_file_exist(private_key_path)) {
         ConsoleWriteFAIL("%s does not exist!", private_key_path);
         return 1;
     }
 
-    if (!zako_sys_file_exist(ca_path)) {
+    if (!lpu_sys_file_exist(ca_path)) {
         ConsoleWriteFAIL("%s does not exist!", ca_path);
         return 1;
     }
 
-    if (!zako_sys_file_exist(request_path)) {
+    if (!lpu_sys_file_exist(request_path)) {
         ConsoleWriteFAIL("%s does not exist!", request_path);
         return 1;
     }
@@ -838,7 +838,7 @@ ZakoCommandHandler(root_cert_approve) {
         for (int j = 0; j < value_sz; j ++) {
             ASN1_TYPE* type = X509_ATTRIBUTE_get0_type(attr, j);
 
-            zako_print_asn1_type(type);
+            lpu_print_asn1_type(type);
 
             if (j + 1 < value_sz) {
                 printf(", ");
@@ -873,7 +873,7 @@ ZakoCommandHandler(root_cert_approve) {
             printf("%s: ", buff);
         }
 
-        zako_print_asn1_type(type);
+        lpu_print_asn1_type(type);
         printf("\n");
     }
 
@@ -884,8 +884,8 @@ ZakoCommandHandler(root_cert_approve) {
     }
 
     ConsoleWrite("");
-    char* days_str = zako_cli_prompt("Approve? (Enter valid days to approve): ");
-    uint64_t days = zako_s2i(days_str) * SECONDS_ONE_DAY;
+    char* days_str = lpu_cli_prompt("Approve? (Enter valid days to approve): ");
+    uint64_t days = lpu_s2i(days_str) * SECONDS_ONE_DAY;
 
     if (days < SECONDS_ONE_DAY) {
         ConsoleWrite("Invalid number! Cancelling...")
@@ -905,7 +905,7 @@ ZakoCommandHandler(root_cert_approve) {
     X509* x509 = X509_new();
 
     X509_set_version(x509, X509_VERSION_3);
-    zako_set_rand_serial(X509_get_serialNumber(x509));
+    lpu_set_rand_serial(X509_get_serialNumber(x509));
     X509_set_pubkey(x509, rpkey);
     X509_set_subject_name(x509, X509_REQ_get_subject_name(req));
     X509_set_issuer_name(x509, X509_get_subject_name(ca_x509));
@@ -917,10 +917,10 @@ ZakoCommandHandler(root_cert_approve) {
     for (int i = 0; i < ext_sz; i ++) {
         X509_add_ext(x509, sk_X509_EXTENSION_value(sk_ext, i), -1);
     }
-    zako_cert_add_extinfo(x509, NID_subject_key_identifier, "hash");
+    lpu_cert_add_extinfo(x509, NID_subject_key_identifier, "hash");
 
     if (X509_sign(x509, private, NULL) == 0) {
-        ZakoOSSLPrintError("Failed to sign generated certificate!");
+        LpuOSSLPrintError("Failed to sign generated certificate!");
         goto x509_fail;
     }
     
@@ -942,45 +942,45 @@ exit:
     return 0;
 }
 
-ZakoCommandHandler(root_cert_issue) {
-    char* private_key_path = ZakoParamAt(0);
-    char* ca_path = ZakoParamAt(1);
-    char* subject_key_path = ZakoParamAt(2);
-    char* out_path = ZakoParamAt(3);
+LpuCommandHandler(root_cert_issue) {
+    char* private_key_path = LpuParamAt(0);
+    char* ca_path = LpuParamAt(1);
+    char* subject_key_path = LpuParamAt(2);
+    char* out_path = LpuParamAt(3);
 
-    char* password = ZakoParam("password");
-    char* ca = ZakoParam("ca");
+    char* password = LpuParam("password");
+    char* ca = LpuParam("ca");
 
     if (private_key_path == NULL || ca_path == NULL || subject_key_path == NULL || out_path == NULL) {
-        ConsoleWrite("Usage: zakosign cert issue <private-key> <ca.crt> <subject-public-key> <out.crt>");
+        ConsoleWrite("Usage: lpusign cert issue <private-key> <ca.crt> <subject-public-key> <out.crt>");
         return 1;
     }
 
-    if (!zako_sys_file_exist(private_key_path)) {
+    if (!lpu_sys_file_exist(private_key_path)) {
         ConsoleWriteFAIL("%s does not exist!", private_key_path);
         return 1;
     }
 
-    if (!zako_sys_file_exist(ca_path)) {
+    if (!lpu_sys_file_exist(ca_path)) {
         ConsoleWriteFAIL("%s does not exist!", ca_path);
         return 1;
     }
 
-    if (!zako_sys_file_exist(subject_key_path)) {
+    if (!lpu_sys_file_exist(subject_key_path)) {
         ConsoleWriteFAIL("%s does not exist!", subject_key_path);
         return 1;
     }
 
-    char* country = zako_cli_noprmt(ZakoParam("country"), "Country (C): ");
-    char* state = zako_cli_noprmt(ZakoParam("state"), "State/Province (ST): ");
-    char* city = zako_cli_noprmt(ZakoParam("city"), "Location/City (L): ");
-    char* org = zako_cli_noprmt(ZakoParam("org"), "Orgnization (O): ");
-    char* ounit = zako_cli_noprmt(ZakoParam("ounit"), "Orgnization Unit (OU): ");
-    char* cname = zako_cli_noprmt(ZakoParam("cn"), "Common Name (CN): ");
-    char* valid_days = zako_cli_noprmt(ZakoParam("days"), "Valid Days: ");
+    char* country = lpu_cli_noprmt(LpuParam("country"), "Country (C): ");
+    char* state = lpu_cli_noprmt(LpuParam("state"), "State/Province (ST): ");
+    char* city = lpu_cli_noprmt(LpuParam("city"), "Location/City (L): ");
+    char* org = lpu_cli_noprmt(LpuParam("org"), "Orgnization (O): ");
+    char* ounit = lpu_cli_noprmt(LpuParam("ounit"), "Orgnization Unit (OU): ");
+    char* cname = lpu_cli_noprmt(LpuParam("cn"), "Common Name (CN): ");
+    char* valid_days = lpu_cli_noprmt(LpuParam("days"), "Valid Days: ");
 
-    EVP_PKEY* private = zako_load_private(private_key_path, password);
-    EVP_PKEY* subject = zako_load_private(subject_key_path, password);
+    EVP_PKEY* private = lpu_load_private(private_key_path, password);
+    EVP_PKEY* subject = lpu_load_private(subject_key_path, password);
 
     BIO* ca_bio = BIO_new_file(ca_path, "r");
     if (ca_bio == NULL) {
@@ -993,7 +993,7 @@ ZakoCommandHandler(root_cert_issue) {
     X509* x509 = X509_new();
 
     X509_set_version(x509, X509_VERSION_3);
-    zako_set_rand_serial(X509_get_serialNumber(x509));
+    lpu_set_rand_serial(X509_get_serialNumber(x509));
     X509_set_pubkey(x509, subject);
     X509_set_issuer_name(x509, X509_get_subject_name(ca_x509));
 
@@ -1007,25 +1007,25 @@ ZakoCommandHandler(root_cert_issue) {
     X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_ASC, (const uint8_t*) cname, -1, -1, 0);
     
     X509_gmtime_adj(X509_getm_notBefore(x509), 0);
-    X509_gmtime_adj(X509_getm_notAfter(x509), zako_s2i(valid_days) * SECONDS_ONE_DAY);
+    X509_gmtime_adj(X509_getm_notAfter(x509), lpu_s2i(valid_days) * SECONDS_ONE_DAY);
 
     if (ca != NULL) {
-        if (zako_streq("true", ca)) {
-            zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
-            zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
+        if (lpu_streq("true", ca)) {
+            lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
+            lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
         } else {
-            zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:FALSE");
-            zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment");
+            lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:FALSE");
+            lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment");
         }
     } else {
-        zako_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
-        zako_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
+        lpu_cert_add_extinfo(x509, NID_basic_constraints, "critical, CA:TRUE");
+        lpu_cert_add_extinfo(x509, NID_key_usage, "critical, digitalSignature, keyEncipherment, keyCertSign");
     }
 
-    zako_cert_add_extinfo(x509, NID_ext_key_usage, "critical, codeSigning");
+    lpu_cert_add_extinfo(x509, NID_ext_key_usage, "critical, codeSigning");
 
     if (X509_sign(x509, private, NULL) == 0) {
-        ZakoOSSLPrintError("Failed to sign generated certificate!");
+        LpuOSSLPrintError("Failed to sign generated certificate!");
         goto exit;
     }
 
@@ -1046,18 +1046,18 @@ exit:
 }
 
 int main(int argc, char* argv[]) {
-    ZakoNewCliApp(true);
-        ZakoCommand(root, help);
-        ZakoCommand(root, verify);
-        ZakoCommand(root, sign);
-        ZakoCommand(root, info);
-        ZakoCommand(root, key);
-            ZakoCommand(root_key, new);
-            ZakoCommand(root_key, pub);
-        ZakoCommand(root, cert);
-            ZakoCommand(root_cert, new);
-            ZakoCommand(root_cert, request);
-            ZakoCommand(root_cert, approve);
-            ZakoCommand(root_cert, issue);
-    ZakoRunCliApp();
+    LpuNewCliApp(true);
+        LpuCommand(root, help);
+        LpuCommand(root, verify);
+        LpuCommand(root, sign);
+        LpuCommand(root, info);
+        LpuCommand(root, key);
+            LpuCommand(root_key, new);
+            LpuCommand(root_key, pub);
+        LpuCommand(root, cert);
+            LpuCommand(root_cert, new);
+            LpuCommand(root_cert, request);
+            LpuCommand(root_cert, approve);
+            LpuCommand(root_cert, issue);
+    LpuRunCliApp();
 }

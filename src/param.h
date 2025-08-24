@@ -1,24 +1,24 @@
-#ifndef ZAKOSIGN_HEADER_PARAM_H
-#define ZAKOSIGN_HEADER_PARAM_H
+#ifndef LPUSIGN_HEADER_PARAM_H
+#define LPUSIGN_HEADER_PARAM_H
 
 #include "prelude.h"
 
-struct zako_command;
-struct zako_param;
+struct lpu_command;
+struct lpu_param;
 
-typedef int (*zako_cmd_handler)(char* flags, struct zako_param* params);
+typedef int (*lpu_cmd_handler)(char* flags, struct lpu_param* params);
 
-struct zako_command {
-    struct zako_command* next; /* Linked list */
+struct lpu_command {
+    struct lpu_command* next; /* Linked list */
 
     const char* command;
-    zako_cmd_handler callback;
+    lpu_cmd_handler callback;
     
-    struct zako_command* sub_commands;
+    struct lpu_command* sub_commands;
 };
 
-struct zako_param {
-    struct zako_param* next; /* Linked list */
+struct lpu_param {
+    struct lpu_param* next; /* Linked list */
 
     char* name;
     int32_t index;
@@ -26,23 +26,23 @@ struct zako_param {
     char* value;
 };
 
-struct zako_command* zako_new_command(struct zako_command* command, const char* cmd, zako_cmd_handler handler);
-int zako_execute(struct zako_command* root, int argc, char* argv[]);
+struct lpu_command* lpu_new_command(struct lpu_command* command, const char* cmd, lpu_cmd_handler handler);
+int lpu_execute(struct lpu_command* root, int argc, char* argv[]);
 
-bool zako_flag(char* flags, char flag);
-bool zako_flag_param(struct zako_param* params, char* flags);
-char* zako_param_at(struct zako_param* params, int32_t index);
-char* zako_param_named(struct zako_param* params, const char* name);
-uint32_t zako_params_count(struct zako_param* params);
+bool lpu_flag(char* flags, char flag);
+bool lpu_flag_param(struct lpu_param* params, char* flags);
+char* lpu_param_at(struct lpu_param* params, int32_t index);
+char* lpu_param_named(struct lpu_param* params, const char* name);
+uint32_t lpu_params_count(struct lpu_param* params);
 
-#define ZakoNewCliApp(handler) struct zako_command* root = zako_new_command(NULL, NULL, handler ? (zako_cmd_handler) __zako_cli_root_handler__ : NULL);
-#define ZakoCommandHandler(command) static int __zako_cli_##command##_handler__(char* flags, struct zako_param* params)
-#define ZakoCommand(base, command) struct zako_command* base##_##command = zako_new_command(base, #command, (zako_cmd_handler) __zako_cli_##base##_##command##_handler__);
-#define ZakoFlag(flag) zako_flag(flags, flag)
-#define ZakoFlagParam(flag) zako_flag_param(params, flag)
-#define ZakoParamAt(index) zako_param_at(params, index)
-#define ZakoParam(name) zako_param_named(params, name)
-#define ZakoParams() zako_params_count(params)
-#define ZakoRunCliApp() return zako_execute(root, argc, &argv[1]);
+#define LpuNewCliApp(handler) struct lpu_command* root = lpu_new_command(NULL, NULL, handler ? (lpu_cmd_handler) __lpu_cli_root_handler__ : NULL);
+#define LpuCommandHandler(command) static int __lpu_cli_##command##_handler__(char* flags, struct lpu_param* params)
+#define LpuCommand(base, command) struct lpu_command* base##_##command = lpu_new_command(base, #command, (lpu_cmd_handler) __lpu_cli_##base##_##command##_handler__);
+#define LpuFlag(flag) lpu_flag(flags, flag)
+#define LpuFlagParam(flag) lpu_flag_param(params, flag)
+#define LpuParamAt(index) lpu_param_at(params, index)
+#define LpuParam(name) lpu_param_named(params, name)
+#define LpuParams() lpu_params_count(params)
+#define LpuRunCliApp() return lpu_execute(root, argc, &argv[1]);
 
 #endif

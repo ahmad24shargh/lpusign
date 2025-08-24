@@ -1,6 +1,6 @@
 #include "sys.h"
 
-#ifdef ZAKO_TARGET_POSIX
+#ifdef LPU_TARGET_POSIX
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -10,11 +10,11 @@
 #include <errno.h>
 #include "syscall.h"
 
-bool zako_sys_file_exist(char* path) {
+bool lpu_sys_file_exist(char* path) {
     return access(path, F_OK) == 0;
 }
 
-file_handle_t zako_sys_file_open(char* path) {
+file_handle_t lpu_sys_file_open(char* path) {
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
         ConsoleWriteFAIL("Failed to open %s", path);
@@ -25,7 +25,7 @@ file_handle_t zako_sys_file_open(char* path) {
 }
 
 
-file_handle_t zako_sys_file_opencopy(char* path, char* new, bool overwrite) {
+file_handle_t lpu_sys_file_opencopy(char* path, char* new, bool overwrite) {
     if (access(new, F_OK) == 0) {
         if (overwrite) {
             if (remove(new) == -1) {
@@ -73,7 +73,7 @@ file_handle_t zako_sys_file_opencopy(char* path, char* new, bool overwrite) {
            
            In order to not copy from kernel to userspace and vise versa multiple times
            we are going to manually do a syscall. Yay! */
-        ret = zako_syscall6(__NR_copy_file_range, fd_in, (long) NULL, fd_out, (long) NULL, size, 0);
+        ret = lpu_syscall6(__NR_copy_file_range, fd_in, (long) NULL, fd_out, (long) NULL, size, 0);
         if (ret == -1) {
             ConsoleWriteFAIL("Failed copy %s to %s", path, new);
             return -1;
@@ -87,37 +87,37 @@ file_handle_t zako_sys_file_opencopy(char* path, char* new, bool overwrite) {
     return fd_out;
 }
 
-void zako_sys_file_append_end(file_handle_t file, uint8_t* data, size_t sz) {
+void lpu_sys_file_append_end(file_handle_t file, uint8_t* data, size_t sz) {
     write(file, (void*) data, sz);
 }
 
-void zako_sys_file_close(file_handle_t fd) {
+void lpu_sys_file_close(file_handle_t fd) {
     close(fd);
 }
 
-size_t zako_sys_file_sz(file_handle_t file) {
+size_t lpu_sys_file_sz(file_handle_t file) {
     struct stat st;
     fstat(file, &st);
 
     return (size_t) st.st_size;
 }
 
-size_t zako_sys_file_szatpath(char* path) {
+size_t lpu_sys_file_szatpath(char* path) {
     struct stat st;
     stat(path, &st);
 
     return (size_t) st.st_size;
 }
 
-void* zako_sys_file_map(file_handle_t file, size_t sz) {
+void* lpu_sys_file_map(file_handle_t file, size_t sz) {
     return mmap(NULL, sz, PROT_READ, MAP_SHARED, file, 0);
 }
 
-void* zako_sys_file_map_rw(file_handle_t file, size_t sz) {
+void* lpu_sys_file_map_rw(file_handle_t file, size_t sz) {
     return mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED, file, 0);
 }
 
-void zako_sys_file_unmap(void* ptr, size_t sz) {
+void lpu_sys_file_unmap(void* ptr, size_t sz) {
     munmap(ptr, sz);
 }
 

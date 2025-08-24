@@ -10,7 +10,7 @@
 
 #include "syscall.h"
 
-__hide uint8_t* zako_allocate_safe(size_t len) {
+__hide uint8_t* lpu_allocate_safe(size_t len) {
     uint8_t* buff = (uint8_t*) malloc(len);
 
     if (buff == NULL) {
@@ -22,15 +22,15 @@ __hide uint8_t* zako_allocate_safe(size_t len) {
     return buff;
 }
 
-__hide void zako_mdupfield(void** buf, size_t len) {
+__hide void lpu_mdupfield(void** buf, size_t len) {
 	void* original = *buf;
-	void* new = zako_allocate_safe(len);
+	void* new = lpu_allocate_safe(len);
 	memcpy(new, original, len);
 
 	*buf = new;
 }
 
-__hide bool zako_streq(const char* a, const char* b) {
+__hide bool lpu_streq(const char* a, const char* b) {
     if (a == NULL && b == NULL) { 
         return true;
     }
@@ -42,7 +42,7 @@ __hide bool zako_streq(const char* a, const char* b) {
     return strcmp(a, b) == 0;
 }
 
-__hide bool zako_strstarts(char* base, char* prefix) {
+__hide bool lpu_strstarts(char* base, char* prefix) {
     while (true) {
         char b = *base++;
         char p = *prefix++;
@@ -94,7 +94,7 @@ __hide unsigned char * base64_encode(const unsigned char *src, size_t len,
 	olen++; /* nul termination */
 	if (olen < len)
 		return NULL; /* integer overflow */
-	out = zako_allocate_safe(olen);
+	out = lpu_allocate_safe(olen);
 	if (out == NULL)
 		return NULL;
 
@@ -167,7 +167,7 @@ __hide unsigned char * base64_decode(const unsigned char *src, size_t len,
 		return NULL;
 
 	olen = count / 4 * 3;
-	pos = out = zako_allocate_safe(olen);
+	pos = out = lpu_allocate_safe(olen);
 	if (out == NULL)
 		return NULL;
 

@@ -2,16 +2,16 @@
 #include "ossl_helper.h"
 #include "constants.h"
 
-X509* zako_x509_parse_pem(char* certificate) {
+X509* lpu_x509_parse_pem(char* certificate) {
     BIO* bio = BIO_new_mem_buf(certificate, strlen(certificate) + 1);
     if (!bio) {
-        ZakoOSSLPrintError("Failed to open PEM certificate")
+        LpuOSSLPrintError("Failed to open PEM certificate")
         return NULL;
     }
 
     X509* cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     if (!cert) {
-        ZakoOSSLPrintError("Failed to parse PEM certificate")
+        LpuOSSLPrintError("Failed to parse PEM certificate")
         BIO_free(bio);
         return NULL;
     }
@@ -20,16 +20,16 @@ X509* zako_x509_parse_pem(char* certificate) {
     return cert;
 }
 
-X509* zako_x509_load_pem(char* path) {
+X509* lpu_x509_load_pem(char* path) {
     BIO* bio = BIO_new_file(path, "r");
     if (!bio) {
-        ZakoOSSLPrintError("Failed to open PEM certificate: %s", path)
+        LpuOSSLPrintError("Failed to open PEM certificate: %s", path)
         return NULL;
     }
 
     X509* cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     if (!cert) {
-        ZakoOSSLPrintError("Failed to parse PEM certificate: %s", path)
+        LpuOSSLPrintError("Failed to parse PEM certificate: %s", path)
         BIO_free(bio);
         return NULL;
     }
@@ -38,10 +38,10 @@ X509* zako_x509_load_pem(char* path) {
     return cert;
 }
 
-X509* zako_x509_parse_der(uint8_t* data, size_t len) {
+X509* lpu_x509_parse_der(uint8_t* data, size_t len) {
     BIO* bio = BIO_new_mem_buf(data, len);
     if (!bio) {
-        ZakoOSSLPrintError("Failed to open DER certificate")
+        LpuOSSLPrintError("Failed to open DER certificate")
         return NULL;
     }
 
@@ -49,7 +49,7 @@ X509* zako_x509_parse_der(uint8_t* data, size_t len) {
     X509* cert = d2i_X509(NULL, &p, len);
 
     if (!cert) {
-        ZakoOSSLPrintError("Failed to parse DER certificate");
+        LpuOSSLPrintError("Failed to parse DER certificate");
         BIO_free(bio);
         return NULL;
     }
@@ -58,8 +58,8 @@ X509* zako_x509_parse_der(uint8_t* data, size_t len) {
     return cert;
 }
 
-struct zako_trustchain* zako_trustchain_new() {
-    struct zako_trustchain* chain = ZakoAllocateStruct(zako_trustchain);
+struct lpu_trustchain* lpu_trustchain_new() {
+    struct lpu_trustchain* chain = LpuAllocateStruct(lpu_trustchain);
     chain->trusted_ca = X509_STORE_new();
     chain->cert_chain = sk_X509_new_null();
 
@@ -69,43 +69,43 @@ struct zako_trustchain* zako_trustchain_new() {
     return chain;
 }
 
-bool zako_trustchain_add_intermediate_str(struct zako_trustchain* chain, char* certificate) {
-    sk_X509_push(chain->cert_chain, zako_x509_parse_pem(certificate));
+bool lpu_trustchain_add_intermediate_str(struct lpu_trustchain* chain, char* certificate) {
+    sk_X509_push(chain->cert_chain, lpu_x509_parse_pem(certificate));
 
     return true;
 }
 
-bool zako_trustchain_add_intermediate_der(struct zako_trustchain* chain, uint8_t* data, size_t len) {
-    sk_X509_push(chain->cert_chain, zako_x509_parse_der(data, len));
+bool lpu_trustchain_add_intermediate_der(struct lpu_trustchain* chain, uint8_t* data, size_t len) {
+    sk_X509_push(chain->cert_chain, lpu_x509_parse_der(data, len));
 
     return true;
 }
 
-bool zako_trustchain_add_intermediate(struct zako_trustchain* chain, X509* certificate) {
+bool lpu_trustchain_add_intermediate(struct lpu_trustchain* chain, X509* certificate) {
     sk_X509_push(chain->cert_chain, certificate);
 
     return true;
 }
 
-bool zako_trustchain_set_leaf_str(struct zako_trustchain* chain, char* certificate) {
-    chain->leaf = zako_x509_parse_pem(certificate);
+bool lpu_trustchain_set_leaf_str(struct lpu_trustchain* chain, char* certificate) {
+    chain->leaf = lpu_x509_parse_pem(certificate);
 
     return true;
 }
 
-bool zako_trustchain_set_leaf_der(struct zako_trustchain* chain, uint8_t* data, size_t len) {
-    chain->leaf = zako_x509_parse_der(data, len);
+bool lpu_trustchain_set_leaf_der(struct lpu_trustchain* chain, uint8_t* data, size_t len) {
+    chain->leaf = lpu_x509_parse_der(data, len);
     
     return true;
 }
 
-bool zako_trustchain_set_leaf(struct zako_trustchain* chain, X509* certificate) {
+bool lpu_trustchain_set_leaf(struct lpu_trustchain* chain, X509* certificate) {
     chain->leaf = certificate;
 
     return true;
 }
 
-int zako_trustchain_verify(struct zako_trustchain* chain) {
+int lpu_trustchain_verify(struct lpu_trustchain* chain) {
     X509_STORE_CTX* ctx = X509_STORE_CTX_new();
     X509_STORE_CTX_init(ctx, chain->trusted_ca, chain->leaf, chain->cert_chain);
 
@@ -117,7 +117,7 @@ int zako_trustchain_verify(struct zako_trustchain* chain) {
     return result;
 }
 
-int zako_trustchain_verifykey(struct zako_trustchain* chain, EVP_PKEY* key) {
+int lpu_trustchain_verifykey(struct lpu_trustchain* chain, EVP_PKEY* key) {
     EVP_PKEY* expected = X509_get_pubkey(chain->leaf);
 
     if (expected == NULL) {
@@ -129,10 +129,10 @@ int zako_trustchain_verifykey(struct zako_trustchain* chain, EVP_PKEY* key) {
         return -100;
     }
 
-    return zako_trustchain_verify(chain);
+    return lpu_trustchain_verify(chain);
 }
 
-void zako_trustchain_free(struct zako_trustchain* chain) {
+void lpu_trustchain_free(struct lpu_trustchain* chain) {
     sk_X509_pop_free(chain->cert_chain, X509_free);
     X509_free(chain->leaf);
     X509_STORE_free(chain->trusted_ca);

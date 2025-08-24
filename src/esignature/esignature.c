@@ -37,22 +37,22 @@ static char* error_messages[] = {
     "One or multiple CRITICAL error occured",
 };
 
-struct zako_esign_context* zako_esign_new() {
-    struct zako_esign_context* ctx = ZakoAllocateStruct(zako_esign_context);
+struct lpu_esign_context* lpu_esign_new() {
+    struct lpu_esign_context* ctx = LpuAllocateStruct(lpu_esign_context);
 
     ctx->esig_buf.key.trustchain[0] = 255; /* L4 */
     ctx->esig_buf.key.trustchain[1] = 255; /* L3 */
     ctx->esig_buf.key.trustchain[2] = 255; /* L2 */
 
-    ctx->esig_buf.magic = ZAKO_ESIGNATURE_MAGIC;
-    ctx->esig_buf.version = ZAKO_ESIGNATURE_VERSION;
+    ctx->esig_buf.magic = LPU_ESIGNATURE_MAGIC;
+    ctx->esig_buf.version = LPU_ESIGNATURE_VERSION;
 
     ctx->esig_buf.created_at = (uint64_t) time(NULL);
     
     return ctx;
 }
 
-static void zako_esign_free(struct zako_esign_context* ctx) {
+static void lpu_esign_free(struct lpu_esign_context* ctx) {
     for (uint8_t i = 0; i < ctx->cert_count; i ++) {
         if (ctx->certs[i] != NULL) {
             free(ctx->certs[i]);
@@ -62,7 +62,7 @@ static void zako_esign_free(struct zako_esign_context* ctx) {
     free(ctx);
 }
 
-uint8_t zako_esign_add_certificate(struct zako_esign_context* ctx, X509* certificate) {
+uint8_t lpu_esign_add_certificate(struct lpu_esign_context* ctx, X509* certificate) {
     if (ctx->cert_count >= 200) {
         return 255;
     }
@@ -80,7 +80,7 @@ uint8_t zako_esign_add_certificate(struct zako_esign_context* ctx, X509* certifi
     uint8_t id = ctx->cert_count;
     ctx->cert_count += 1;
 
-    struct zako_der_certificate* fin_cert = (struct zako_der_certificate*) zako_allocate_safe(sizeof(struct zako_der_certificate) + der_len);
+    struct lpu_der_certificate* fin_cert = (struct lpu_der_certificate*) lpu_allocate_safe(sizeof(struct lpu_der_certificate) + der_len);
 
     fin_cert->len = der_len;
     fin_cert->id = id;
@@ -93,13 +93,13 @@ uint8_t zako_esign_add_certificate(struct zako_esign_context* ctx, X509* certifi
     return id;
 }
 
-void zako_esign_set_publickey(struct zako_esign_context* ctx, EVP_PKEY* key) {
+void lpu_esign_set_publickey(struct lpu_esign_context* ctx, EVP_PKEY* key) {
     /* Public key size is a known size, so we can safely ignore this */
 #pragma clang diagnostic ignored "-Wincompatible-pointer-types"
-    zako_get_public_raw(key, &ctx->esig_buf.key.public_key);
+    lpu_get_public_raw(key, &ctx->esig_buf.key.public_key);
 }
 
-void zako_esign_add_keycert(struct zako_esign_context* ctx, uint8_t id) {
+void lpu_esign_add_keycert(struct lpu_esign_context* ctx, uint8_t id) {
     if (ctx->esig_buf.key.trustchain[0] == 255) {
         ctx->esig_buf.key.trustchain[0] = id;
     } else if (ctx->esig_buf.key.trustchain[1] == 255) {
@@ -109,43 +109,43 @@ void zako_esign_add_keycert(struct zako_esign_context* ctx, uint8_t id) {
     }
 }
 
-void zako_esign_set_signature(struct zako_esign_context* ctx, uint8_t* hash, uint8_t* signature) {
-    memcpy(&ctx->esig_buf.signature, signature, ZAKO_SIGNATURE_LENGTH);
-    memcpy(&ctx->esig_buf.hash, hash, ZAKO_HASH_LENGTH);
+void lpu_esign_set_signature(struct lpu_esign_context* ctx, uint8_t* hash, uint8_t* signature) {
+    memcpy(&ctx->esig_buf.signature, signature, LPU_SIGNATURE_LENGTH);
+    memcpy(&ctx->esig_buf.hash, hash, LPU_HASH_LENGTH);
 }
 
-struct zako_esignature* zako_esign_create(struct zako_esign_context* ctx, size_t* len) {
-    size_t esig_sz = sizeof(struct zako_esignature);
+struct lpu_esignature* lpu_esign_create(struct lpu_esign_context* ctx, size_t* len) {
+    size_t esig_sz = sizeof(struct lpu_esignature);
 
     for (uint8_t i = 0; i < ctx->cert_count; i ++) {
         if (ctx->certs[i] != NULL) {
-            esig_sz += sizeof(struct zako_der_certificate) + ctx->certs[i]->len;
+            esig_sz += sizeof(struct lpu_der_certificate) + ctx->certs[i]->len;
         }
     }
 
     *len = esig_sz;
 
-    struct zako_esignature* esignature = (struct zako_esignature*) zako_allocate_safe(esig_sz);
-    memcpy(esignature, &ctx->esig_buf, sizeof(struct zako_esignature));
+    struct lpu_esignature* esignature = (struct lpu_esignature*) lpu_allocate_safe(esig_sz);
+    memcpy(esignature, &ctx->esig_buf, sizeof(struct lpu_esignature));
 
     esignature->cert_sz = ctx->cert_count;
 
     size_t off = (size_t) &esignature->data;
     for (uint8_t i = 0; i < ctx->cert_count; i ++) {
         if (ctx->certs[i] != NULL) {
-            size_t sz = sizeof(struct zako_der_certificate) + ctx->certs[i]->len;
+            size_t sz = sizeof(struct lpu_der_certificate) + ctx->certs[i]->len;
             memcpy((void*) off, ctx->certs[i], sz);
 
             off += sz;
         }
     }
 
-    zako_esign_free(ctx);
+    lpu_esign_free(ctx);
 
     return esignature;
 }
 
-static struct zako_der_certificate* zako_keychain_getcert(struct zako_der_certificate** certtbl, uint8_t id) {
+static struct lpu_der_certificate* lpu_keychain_getcert(struct lpu_der_certificate** certtbl, uint8_t id) {
     if (id == 255) {
         return NULL;
     }
@@ -153,45 +153,45 @@ static struct zako_der_certificate* zako_keychain_getcert(struct zako_der_certif
     return certtbl[id];
 }
 
-static uint32_t zako_keychain_verify(struct zako_keychain* kc, struct zako_der_certificate** certtbl) {
-    struct zako_trustchain* chain = zako_trustchain_new();
-    struct zako_der_certificate* leaf = zako_keychain_getcert(certtbl, kc->trustchain[0]);
-    struct zako_der_certificate* l3 = zako_keychain_getcert(certtbl, kc->trustchain[1]);
-    struct zako_der_certificate* l2 = zako_keychain_getcert(certtbl, kc->trustchain[2]);
+static uint32_t lpu_keychain_verify(struct lpu_keychain* kc, struct lpu_der_certificate** certtbl) {
+    struct lpu_trustchain* chain = lpu_trustchain_new();
+    struct lpu_der_certificate* leaf = lpu_keychain_getcert(certtbl, kc->trustchain[0]);
+    struct lpu_der_certificate* l3 = lpu_keychain_getcert(certtbl, kc->trustchain[1]);
+    struct lpu_der_certificate* l2 = lpu_keychain_getcert(certtbl, kc->trustchain[2]);
 
     if (kc->trustchain[0] == 255) {
         return 0;
     }
 
-    zako_trustchain_set_leaf_der(chain, leaf->data, leaf->len);
+    lpu_trustchain_set_leaf_der(chain, leaf->data, leaf->len);
 
     if (l3 != NULL) {
-        zako_trustchain_add_intermediate_der(chain, l3->data, l3->len);
+        lpu_trustchain_add_intermediate_der(chain, l3->data, l3->len);
     }
 
     if (l2 != NULL) {
-        zako_trustchain_add_intermediate_der(chain, l2->data, l2->len);
+        lpu_trustchain_add_intermediate_der(chain, l2->data, l2->len);
     }
 
-    int x509_v_result = zako_trustchain_verify(chain);
+    int x509_v_result = lpu_trustchain_verify(chain);
     uint32_t result = 0;
     switch (x509_v_result) {
         case X509_V_ERR_CERT_HAS_EXPIRED:
-            result = ZAKO_ESV_CERTIFICATE_EXPIRED;
+            result = LPU_ESV_CERTIFICATE_EXPIRED;
             goto exit;
         case X509_V_ERR_CERT_UNTRUSTED:
-            result = ZAKO_ESV_UNTRUST_CERTIFICATE_CHAIN;
+            result = LPU_ESV_UNTRUST_CERTIFICATE_CHAIN;
             goto exit;
         default:
             if (x509_v_result != X509_V_OK) {
-                result = ZAKO_ESV_CERTIFICATE_ERROR;
+                result = LPU_ESV_CERTIFICATE_ERROR;
                 goto exit;
             }
 
             EVP_PKEY* expected = X509_get_pubkey(chain->leaf);
-            EVP_PKEY* got = zako_parse_public_raw(kc->public_key);
+            EVP_PKEY* got = lpu_parse_public_raw(kc->public_key);
             if (!EVP_PKEY_cmp(expected, got)) {
-                result = ZAKO_ESV_CERTKEY_MISMATCH;
+                result = LPU_ESV_CERTKEY_MISMATCH;
             }
 
             EVP_PKEY_free(expected);
@@ -200,71 +200,71 @@ static uint32_t zako_keychain_verify(struct zako_keychain* kc, struct zako_der_c
     }
 
 exit:
-    zako_trustchain_free(chain);
+    lpu_trustchain_free(chain);
     return result;
 }
 
-uint32_t zako_esign_verify(struct zako_esignature* esig, uint8_t* buff, size_t len, uint32_t flags) {
-    if (esig->magic != ZAKO_ESIGNATURE_MAGIC) {
-        return ZAKO_ESV_INVALID_HEADER;
+uint32_t lpu_esign_verify(struct lpu_esignature* esig, uint8_t* buff, size_t len, uint32_t flags) {
+    if (esig->magic != LPU_ESIGNATURE_MAGIC) {
+        return LPU_ESV_INVALID_HEADER;
     }
 
-    if (esig->version != ZAKO_ESIGNATURE_VERSION) {
-        if (esig->version > ZAKO_ESIGNATURE_VERSION) {
-            return ZAKO_ESV_UNSUPPORTED_VERSION;
+    if (esig->version != LPU_ESIGNATURE_VERSION) {
+        if (esig->version > LPU_ESIGNATURE_VERSION) {
+            return LPU_ESV_UNSUPPORTED_VERSION;
         } else {
-            return ZAKO_ESV_OUTDATED_VERSION;
+            return LPU_ESV_OUTDATED_VERSION;
         }
     }
 
     uint32_t result = 0;
     EVP_PKEY* pubkey = NULL;
 
-    OnFlag(flags, ZAKO_ESV_INTEGRITY_ONLY) {
+    OnFlag(flags, LPU_ESV_INTEGRITY_ONLY) {
         goto verify_integrity;
     }
 
     /* Verify Ceritificates */
 
     uint8_t cert_count = esig->cert_sz;
-    struct zako_der_certificate* cstbl[200] = { 0 };
+    struct lpu_der_certificate* cstbl[200] = { 0 };
 
     uint8_t* data = &esig->data;
     size_t off = (size_t) 0;
     for (uint8_t i = 0; i < cert_count; i ++) {
-        struct zako_der_certificate* cert = ApplyOffset(data, +off);
+        struct lpu_der_certificate* cert = ApplyOffset(data, +off);
         cstbl[i] = cert;
 
-        off += sizeof(struct zako_der_certificate) + cert->len;
+        off += sizeof(struct lpu_der_certificate) + cert->len;
     }
 
-    result |= zako_keychain_verify(&esig->key, &cstbl);
+    result |= lpu_keychain_verify(&esig->key, &cstbl);
 
 verify_integrity:
-    pubkey = zako_parse_public_raw(esig->key.public_key);
+    pubkey = lpu_parse_public_raw(esig->key.public_key);
     
-    if (zako_hash_verify(buff, len, esig->hash) != 1) {
-        result |= ZAKO_ESV_VERFICATION_FAILED;
+    if (lpu_hash_verify(buff, len, esig->hash) != 1) {
+        result |= LPU_ESV_VERFICATION_FAILED;
     }
 
-    if (zako_verify_buffer(pubkey, esig->hash, ZAKO_HASH_LENGTH, esig->signature) != 1) {
-        result |= ZAKO_ESV_VERFICATION_FAILED;
+    if (lpu_verify_buffer(pubkey, esig->hash, LPU_HASH_LENGTH, esig->signature) != 1) {
+        result |= LPU_ESV_VERFICATION_FAILED;
     }
 
     EVP_PKEY_free(pubkey);
 
     uint64_t now = (uint64_t) time(NULL);
     if (esig->created_at == 0) {
-        result |= ZAKO_ESV_MISSING_TIMESTAMP;
+        result |= LPU_ESV_MISSING_TIMESTAMP;
     } else if (esig->created_at >= now) {
-        result |= ZAKO_ESV_UNTRUSTED_TIMESTAMP;
+        result |= LPU_ESV_UNTRUSTED_TIMESTAMP;
     }
 
     return result;
 
 }
 
-const char* zako_esign_verrcidx2str(uint8_t idx) {
+const char* lpu_esign_verrcidx2str(uint8_t idx) {
     if (idx >= 31) {
         return NULL;
     }

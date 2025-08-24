@@ -1,6 +1,6 @@
 #include "syscall.h"
 
-__hide long zako_syscall0(long n) {
+__hide long lpu_syscall0(long n) {
     long ret;
 
 #if defined(__aarch64__)
@@ -17,7 +17,7 @@ __hide long zako_syscall0(long n) {
     return ret;
 }
 
-__hide long zako_syscall1(long n, long a1) {
+__hide long lpu_syscall1(long n, long a1) {
     long ret;
 
 #if defined(__aarch64__)
@@ -37,7 +37,7 @@ __hide long zako_syscall1(long n, long a1) {
     return ret;
 }
 
-__hide long zako_syscall2(long n, long a1, long a2) {
+__hide long lpu_syscall2(long n, long a1, long a2) {
     long ret;
 
 #if defined(__aarch64__)
@@ -60,7 +60,7 @@ __hide long zako_syscall2(long n, long a1, long a2) {
     return ret;
 }
 
-__hide long zako_syscall3(long n, long a1, long a2, long a3) {
+__hide long lpu_syscall3(long n, long a1, long a2, long a3) {
     long ret;
 
 #if defined(__aarch64__)
@@ -86,7 +86,7 @@ __hide long zako_syscall3(long n, long a1, long a2, long a3) {
     return ret;
 }
 
-__hide long zako_syscall4(long n, long a1, long a2, long a3, long a4) {
+__hide long lpu_syscall4(long n, long a1, long a2, long a3, long a4) {
     long ret;
 
 #if defined(__aarch64__)
@@ -115,7 +115,7 @@ __hide long zako_syscall4(long n, long a1, long a2, long a3, long a4) {
     return ret;
 }
 
-__hide long zako_syscall5(long n, long a1, long a2, long a3, long a4, long a5) {
+__hide long lpu_syscall5(long n, long a1, long a2, long a3, long a4, long a5) {
     long ret;
 
 #if defined(__aarch64__)
@@ -147,7 +147,7 @@ __hide long zako_syscall5(long n, long a1, long a2, long a3, long a4, long a5) {
     return ret;
 }
 
-__hide long zako_syscall6(long n, long a1, long a2, long a3, long a4, long a5, long a6) {
+__hide long lpu_syscall6(long n, long a1, long a2, long a3, long a4, long a5, long a6) {
     long ret;
 
 #if defined(__aarch64__)

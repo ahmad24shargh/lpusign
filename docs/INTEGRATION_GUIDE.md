@@ -1,51 +1,51 @@
-# zakosign Integration Guide
+# lpusign Integration Guide
 
 **NOTICE: This document is still WIP. Changes may occur anytime without notice.**
 
-This guide is for integrating zakosign into modern root implementation manager.
+This guide is for integrating lpusign into modern root implementation manager.
 This guide is split into three parts: integration overview, verification, recommended user-end design notes.
 
 ## Integration Overview
 ### Purpose
 
-The purpose of zakosign is simple: to verify magisk module and KPM integrity.
+The purpose of lpusign is simple: to verify magisk module and KPM integrity.
 These days, fake modules that pretend to be a popular module existed everywhere,
 which is a growing threat for some beginners who can't differenciate them.
 By signing Magisk Modules and Kernel Patch Modules, this problem can be solved.
 
 ### Terminology
 
-- zakosign: This project and the Command-Line Interface Tool for signing and verifing
-- zakosign E-Signature: Also known as `E-Signature` or `esig`, refers to the signature structure.
+- lpusign: This project and the Command-Line Interface Tool for signing and verifing
+- lpusign E-Signature: Also known as `E-Signature` or `esig`, refers to the signature structure.
 - TSA: Time Stamping Authority, is used to proof signing date. TSA issues a timestamp with a signature.
 - OSS Certificate: A special certificate that issues only to opensource modules and requires to be signed on Github Actions or other transperent CI server.
 
 ### Basic Functionality
 
-zakosign can sign a Magisk Module (PK) or Kernel Patch Module (ELF) file by adding a E-Signature data at the end of the file.
+lpusign can sign a Magisk Module (PK) or Kernel Patch Module (ELF) file by adding a E-Signature data at the end of the file.
 E-Signature contains public key, certificate chain, timestamp, timestamp signature, file hash, hash signature.
 
-zakosign provides signing routines and verifing routines. 
+lpusign provides signing routines and verifing routines. 
 Verifing routines supports basic data verification and certificate verification. 
 Root manager implementation can add trusted root certificate freely through provided API.
 
 ## Integration and data verification
 
-zakosign does not break any existing code. 
-zakosign should be implemented in userspace only.
+lpusign does not break any existing code. 
+lpusign should be implemented in userspace only.
 
-To integrate zakosign into your root manager implementation, 
+To integrate lpusign into your root manager implementation, 
 please refer to the following example C code
 
 ```c
-int fd = zako_file_open_rw(input);
-uint32_t results = zako_file_verify_esig(fd, 0);
+int fd = lpu_file_open_rw(input);
+uint32_t results = lpu_file_verify_esig(fd, 0);
 
 if (results != 0) {
     /* If important error occured, verification process should 
        be considered as failed due to unexpected modification
        potentially happened. */
-    if ((results & ZAKO_ESV_IMPORTANT_ERROR) != 0) {
+    if ((results & LPU_ESV_IMPORTANT_ERROR) != 0) {
         ConsoleWriteFAIL("Verification failed!");
     } else {
         /* This is for manager that doesn't want to do certificate checks */
@@ -63,7 +63,7 @@ for (uint8_t i = 0; i < sizeof(uint32_t); i ++) {
     }
 
     /* Convert error bit field index into human readable string */
-    const char* message = zako_esign_verrcidx2str(i);
+    const char* message = lpu_esign_verrcidx2str(i);
     ConsoleWriteFAIL("%s", message);
 }
 
@@ -75,26 +75,26 @@ Below is a table of all error codes.
 
 | Field Index | Field                              | Important |
 | ----------- | ---------------------------------- | --------- |
-| 0           | ZAKO_ESV_INVALID_HEADER            | Yes       |
-| 1           | ZAKO_ESV_UNSUPPORTED_VERSION       | Yes       |
-| 2           | ZAKO_ESV_OUTDATED_VERSION          | Yes       |
-| 3           | ZAKO_ESV_MISSING_CERTIFICATE       |           |
-| 4           | ZAKO_ESV_UNTRUST_CERTIFICATE_CHAIN | Yes       |
-| 5           | ZAKO_ESV_MISSING_TIMESTAMP         |           |
-| 6           | ZAKO_ESV_UNTRUSTED_TIMESTAMP       | Yes       |
-| 7           | ZAKO_ESV_VERFICATION_FAILED        | Yes       |
-| 8           | ZAKO_ESV_CERTIFICATE_EXPIRED       |           |
-| 9           | ZAKO_ESV_CERTIFICATE_ERROR         |           |
-| 10          | ZAKO_ESV_CERTKEY_MISMATCH          | Yes       |
+| 0           | LPU_ESV_INVALID_HEADER            | Yes       |
+| 1           | LPU_ESV_UNSUPPORTED_VERSION       | Yes       |
+| 2           | LPU_ESV_OUTDATED_VERSION          | Yes       |
+| 3           | LPU_ESV_MISSING_CERTIFICATE       |           |
+| 4           | LPU_ESV_UNTRUST_CERTIFICATE_CHAIN | Yes       |
+| 5           | LPU_ESV_MISSING_TIMESTAMP         |           |
+| 6           | LPU_ESV_UNTRUSTED_TIMESTAMP       | Yes       |
+| 7           | LPU_ESV_VERFICATION_FAILED        | Yes       |
+| 8           | LPU_ESV_CERTIFICATE_EXPIRED       |           |
+| 9           | LPU_ESV_CERTIFICATE_ERROR         |           |
+| 10          | LPU_ESV_CERTKEY_MISMATCH          | Yes       |
 
 Errors that are related to inconsistency are considered as unexpected modifications,
 and thus, they are considered as important errors that will fail the verification entirely.
 
-You should compile your own copy of zakosign for verification because
-zakosign does not ship any root CAs, so if you wish to use certificate
-related features, you must compile your own copy of zakosign.
+You should compile your own copy of lpusign for verification because
+lpusign does not ship any root CAs, so if you wish to use certificate
+related features, you must compile your own copy of lpusign.
 
-### Compiling zakosign
+### Compiling lpusign
 
 Required Packages are listed below:
 - `GNU Make`

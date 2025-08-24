@@ -1,10 +1,10 @@
-#ifndef ZAKOSIGN_HEADER_OSSL_HELPER_H
-#define ZAKOSIGN_HEADER_OSSL_HELPER_H
+#ifndef LPUSIGN_HEADER_OSSL_HELPER_H
+#define LPUSIGN_HEADER_OSSL_HELPER_H
 
 #include "prelude.h"
 #include <openssl/err.h>
 
-#define ZakoOSSLPrintError(...) { \
+#define LpuOSSLPrintError(...) { \
         ConsoleWriteFAIL(__VA_ARGS__); \
         unsigned long err_code; \
         char err_buf[1024]; \

@@ -1,4 +1,4 @@
-# zakosign
+# lpusign
 
 An ELF and PK file signing tool.
 
@@ -17,7 +17,7 @@ An example can be that a virus module pretend to be a popular module by simply c
 As Android root managers (Magisk, KernelSU, APatch, and their forks) does not
 verify the integrity of Magisk Modules or Kernel Patch Modules,
 this project is here to solve the problem without introducing any breaking changes.
-`zakosign` provides a complete solution for signing both PK (aka ZIP) and ELF files.
+`lpusign` provides a complete solution for signing both PK (aka ZIP) and ELF files.
 
 It is important to verify before installation but not after installation because
 with root privileges you can basically bypass all signature verification in your system.
@@ -25,7 +25,7 @@ So, it is important to prevent the installation of suspicious modules.
 
 ## For Root Implementations
 
-Please read `docs/INTEGRATION_GUIDE.md` for more information on integrating zakosign.
+Please read `docs/INTEGRATION_GUIDE.md` for more information on integrating lpusign.
 
 ## For Developers
 
@@ -33,16 +33,16 @@ To sign your module, you will first need a ED25519 keypair. RSA keypair is not s
 If you already have one, you can skip this step.
 
 ```shell
-$ zakosign key new yourkey.pem
+$ lpusign key new yourkey.pem
 ```
 
 Signing your module
 ```shell
-$ zakosign sign example.zip --key yourkey.pem --output example.signed.zip
+$ lpusign sign example.zip --key yourkey.pem --output example.signed.zip
 ```
 
 If you wish to add certificates, specify them by using `--certificate` repeatly. 
 You can add maximium of four certificates.
 ```shell
-$ zakosign sign example.kpm --key l3.pem --output example.signed.kpm --certificate l3.crt --certificate l2.crt --force
+$ lpusign sign example.kpm --key l3.pem --output example.signed.kpm --certificate l3.crt --certificate l2.crt --force
 ```

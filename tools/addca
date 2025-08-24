@@ -6,8 +6,8 @@ if ! [ -f "$1" ]; then
 fi
 
 NAME=$(basename $1 | cut -f 1 -d '.')
-TEMPLATE="X509_STORE_add_cert(chain->trusted_ca, zako_x509_parse_pem((char*) ZakoConstant($NAME)));"
-TEMPLATE_DEF="ZakoDefineConstant($NAME)"
+TEMPLATE="X509_STORE_add_cert(chain->trusted_ca, lpu_x509_parse_pem((char*) LpuConstant($NAME)));"
+TEMPLATE_DEF="LpuDefineConstant($NAME)"
 
 cp $1 src/$NAME.bin
 printf "\0" >> src/$NAME.bin
