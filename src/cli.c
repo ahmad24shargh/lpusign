@@ -8,6 +8,7 @@
 #include "esignature/cert_helper.h"
 
 #include <openssl/x509.h>
+#include <openssl/x509v3.h> // Or a similar OpenSSL header that declares this function
 #include <stdio.h>
 
 /* What if we are on mars?? How should we tell if one day isn't 86400?
