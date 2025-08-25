@@ -18,12 +18,12 @@ jobs:
       - name: Build lpusign ...
         run: |
           make
-          ls -lRa
+          ls -lR
           
           
       - name: Upload Build Artifacts
-        if: false
+        $if: false
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: patch_linux_android
-          path: release/*
+          name: lpusign
+          path: bin/*
